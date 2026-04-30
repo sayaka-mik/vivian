@@ -75,6 +75,1114 @@
             text-shadow: 0 0 10px rgba(255,255,255,0.5);
         }
 
+        /* Game Screen Layout */
+        .top-bar { text-align: center; font-size: 20px; font-weight: bold; margin-bottom: 20px; }
+        .profile-status-container {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        .profile-img {
+            width: 150px;
+            height: 150px;
+            background-color: #444;
+            border-radius: 8px;
+            object-fit: cover;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: #888;
+            text-align: center;
+        }
+        .status-window {
+            flex-grow: 1;
+            background-color: #2a2a2a;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+        .story-box {
+            background-color: #1a1a1a;
+            padding: 15px;
+            border-radius: 8px;
+            max-height: 350px;
+            overflow-y: auto;
+            margin-bottom: 15px;
+            font-size: 15px;
+            line-height: 1.6;
+            border: 1px solid #333;
+        }
+        .choices-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        /* Utilities */
+        .fade-out { animation: fadeOut 1s forwards; }
+        @keyframes fadeOut { to { opacity: 0; } }
+        .text-red { color: #ff5555; }
+        .text-blue { color: #55aaff; }
+        .text-green { color: #6bff6b; }
+
+        /* --- 로그 메시지 박스 스타일 --- */
+        .log-box { 
+            background-color: #0d0d0d;
+            padding: 12px; 
+            border-radius: 6px; 
+            margin-bottom: 12px; 
+            font-size: 14px; 
+            line-height: 1.5;
+            font-weight: bold;
+        }
+        .log-penalty    { color: #ff6b6b; border: 1px solid #4a2323; }
+        .log-merit      { color: #6bff6b; border: 1px solid #234a28; }
+        .log-info       { color: #6baaff; border: 1px solid #23354a; }
+        .log-bright-red { color: #ff3333; border: 1px solid #5a1a1a; }
+        .log-pink       { color: #ff88cc; border: 1px solid #4a2342; }
+        .log-dark-red   { color: #a33333; border: 1px solid #2b0b0b; }
+        
+        /* 공통 헬퍼 클래스 */
+        .event-logs { background:#221111; padding:10px; border-radius:5px; margin-bottom:10px; font-size:13px; }
+    </style>
+</head>
+<body>
+
+<div id="app">
+    <div id="title-screen" class="screen active">
+        <h1 style="margin-top: 40%;">젠레스 존 제로<br><span style="font-size: 20px;">공동 탐사 시뮬레이터</span></h1>
+        <button onclick="startIntro()" style="margin-top: auto; margin-bottom: 50px;">게임 시작</button>
+    </div>
+
+    <div id="intro-screen" class="screen" onclick="skipIntroText()" style="cursor: pointer;">
+        <div id="intro-text"></div>
+        <button id="skip-intro-btn" onclick="event.stopPropagation(); startAnimation();" style="display: none; margin-top: 20px;">레테 공동으로 향한다</button>
+    </div>
+
+    <div id="anim-screen" class="screen">
+        <div id="anim-container"></div>
+        <div id="anim-center-text" style="display: none;"></div>
+    </div>
+
+    <div id="game-screen" class="screen">
+        <div class="top-bar"> B <span id="current-floor">1</span></div>
+        
+        <div class="profile-status-container">
+            <div class="profile-img">
+                <img src="FACE-VIVIAN.jpg" alt="비비안 밴시" style="width:100%; height:100%; border-radius:8px; object-fit:cover;">
+            </div>
+            <div class="status-window" id="status-window"></div>
+        </div>
+
+        <div class="story-box" id="story-box"></div>
+        <div class="choices-container" id="choices-container"></div>
+    </div>
+
+    <div id="result-screen" class="screen">
+        <div class="story-box" id="result-box" style="flex-grow: 1; display: flex; flex-direction: column; justify-content: center; text-align: center;">
+            결과 텍스트
+        </div>
+        <button type="button" onclick="checkResoniumAndNext()">다음 계층으로</button>
+    </div>
+
+    <div id="ending-screen" class="screen">
+        <h2>탐사 종료</h2>
+        <div id="ending-text" class="story-box"></div>
+        <button onclick="location.reload()">처음으로 돌아가기</button>
+    </div>
+
+    <!-- 레조니움 화면 (인라인 display:none 속성 제거) -->
+    <div id="resonium-screen" class="screen" style="flex-direction:column; justify-content:center; align-items:center;">
+        <div style="background:#0d0d0d; border: 2px solid #55aaff; padding:40px; border-radius:10px; text-align:center; box-shadow: 0 0 20px rgba(85, 170, 255, 0.3); width: 100%;">
+            <h2 style="color:#55aaff; margin-top:0;">✨ 레조니움 발견! ✨</h2>
+            <div id="resonium-message" style="margin: 30px 0; font-size: 16px; line-height: 1.6;"></div>
+            <button type="button" onclick="proceedNextFloor()" style="padding: 10px 30px; font-size: 16px;">다음 계층으로</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// --- 1. 유틸리티 함수 및 상태 초기화 ---
+function clampProb(val) { return Math.min(100, Math.max(0, Math.floor(val))); }
+function clampStat(val) { return Math.min(1000, Math.max(0, Math.floor(val))); }
+function getRandomInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+
+// 로그 포맷팅 헬퍼 함수 (최적화)
+function formatLogs(logs) {
+    return (logs && logs.length > 0) ? `<div class="event-logs">${logs.join('<br>')}</div>` : '';
+}
+
+let state = {
+    floor: 1, hp: 50, maxHp: 200, minHp: 0,
+    will: 0, love: 1, hope: 0, hate: 0, corruption: 0,
+    titles: [],
+    resoniums: [],
+    prob: { event: 35, encounter: 35, combat: 22, elite: 7, anomaly: 1 },
+    bangbooShieldActive: false,
+    corruptionImmunityFloors: 0,
+    bangbooEncounterCount: 0,
+    guaranteedAnomaly: null,
+    combatImmuneActive: false
+};
+
+let isSkipping = false;
+
+function updateStats(changes) {
+    if(changes.hp) state.hp += changes.hp;
+    if(changes.will) state.will += changes.will;
+    if(changes.love) state.love += changes.love;
+    if(changes.hope) state.hope += changes.hope;
+    if(changes.hate) state.hate += changes.hate;
+    if(changes.corruption) state.corruption += changes.corruption;
+
+    state.will = clampStat(state.will);
+    state.love = clampStat(state.love);
+    state.hope = clampStat(state.hope);
+    state.hate = clampStat(state.hate);
+    
+    if(state.hp > state.maxHp) state.hp = state.maxHp;
+}
+
+function incrementBangbooCount() {
+    state.bangbooEncounterCount += 1;
+    if (state.resoniums.includes("마르셀 개조 부품") && state.bangbooEncounterCount >= 10) {
+        state.guaranteedAnomaly = "마르셀 그룹";
+        state.bangbooEncounterCount = 0; 
+    }
+}
+
+const resoniumPool = [
+    { name: "침식억제제", prob: 7 },
+    { name: "파에톤의노래", prob: 2 },
+    { name: "운규 이야기", prob: 3 },
+    { name: "마르셀 개조 부품", prob: 0 }, 
+    { name: "공허사냥꾼의 칼", prob: 0 }, 
+    { name: "일반 레조니움", prob: 88 }  
+];
+
+// 통합 및 최적화된 레조니움 획득 함수
+function gainResonium(specificName = null) {
+    let name = specificName;
+    
+    // 이벤트 객체가 넘어오는 것을 방지 (버튼 클릭 방어)
+    if (typeof name !== 'string') {
+        name = null; 
+    }
+    
+    if (!name) {
+        let rand = Math.random() * 100;
+        let cumulative = 0;
+        for (let item of resoniumPool) {
+            cumulative += item.prob;
+            if (rand < cumulative) {
+                name = item.name; 
+                break;
+            }
+        }
+        if (!name) name = "일반 레조니움";
+    }
+    
+    state.resoniums.push(name);
+    
+    // 즉발 효과 처리
+    if (name === "침식억제제") {
+        state.corruptionImmunityFloors += 5;
+    }
+    
+    return name;
+}
+
+const introString = `오늘 파에톤이 죽었다. 어쩌면 어제. 비비안 밴시는 폐인이 되어 뉴에리두 골목길에 넝마주이처럼 널브러져 있었다. 누군가 그녀를 건드려도, 비비안 밴시는 반응하지도 않았다.
+
+이제 이 삶에 무슨 의미가 있을까? 계절이 속절없이 흐르고, 비비안을 찾아온 휴고 블라드는, 막상 말을 걸지는 않고 뜸을 들인다. 휴고는 비비안이 자신에게 눈길조차 주지 않자 한숨을 내쉬고는 말한다.
+
+"비비안, 야누스 구역에 새로운 공동이 발생한 걸 알고 있어?"
+"......."
+"...들리는 소문에 의하면, 그곳에서 그 두 남매를 봤다는-"
+
+비비안 밴시는 삐거덕거리는 몸을 일으켰다.
+"......."
+
+그녀는 아무 말도 하지 않았다. 그저 야누스 구역에 발생했다는 새로운 공동으로 항했을 뿐이다. 파에톤 님이 정말 살아있는지, 혹은 휴고가 자신을 속이러 한 것인지, 그런 생각은 그녀의 머릿속에 존재하지 않았다. 모든 생각도 감정도 사라진 비비안에게 진실이나 의도 따위는 하등 필요 없는 것이었다.
+
+파에톤이 정말 그곳에 있는지, 없는지. 중요치 않다. 중요한 건 비비안 밴시는 그곳으로 갈 수밖에 없다는 것이었다.
+
+지나가는 길거리에서는 '레테 공동의 50층에 도착하면 시간을 되돌릴 수 있다'는 헛소문에 대해 떠드는 사람들의 목소리가 들려온다. 비비안 밴시의 두 눈에서 눈물이 흘러 내린다.
+
+그녀는 레테 공동으로 뛰어들었다.
+부디 그녀에게, 행운의 여신이 깃들기를.`;
+
+const zzzKeywords = ["젠레스 존 제로", "ZENLESS ZONE ZERO", "ゼンレスゾーンゼロ", "绝区零", "렘니안 공동", "야누스 구역", "RAMDOM PLAY", "비비안", "VIVIAN", "로프꾼", "파에톤님", "벨", "와이즈", "헬리오스", "예언", "저주", "사랑", "파에톤", "레테 공동", "제로공동", "화이트스타", "BANGBOO", "공허사냥꾼", "레조니움", "에테리얼"];
+
+function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+}
+
+function skipIntroText() {
+    isSkipping = true;
+}
+
+async function typeWriter(text, elementId, callback) {
+    const el = document.getElementById(elementId);
+    el.innerHTML = '';
+    isSkipping = false;
+
+    const chars = text.split('');
+
+    for (let i = 0; i < text.length; i++) {
+        if (isSkipping) {
+            el.innerHTML = text.replace(/\n/g, '<br>');
+            if (callback) callback(); 
+            return; 
+        }
+
+        let char = chars[i];
+        if (char === '\n') {
+            el.innerHTML += '<br>';
+        } else {
+            el.innerHTML += char;
+        }
+        
+        let delay = (char === '.' || char === '?' || char === '!' || char === ',') ? 28 : 17;
+        await new Promise(r => setTimeout(r, delay));
+        el.scrollTop = el.scrollHeight;
+    }
+    if (callback) callback();
+}
+
+function startIntro() {
+    showScreen('intro-screen');
+    typeWriter(introString, 'intro-text', () => {
+        document.getElementById('skip-intro-btn').style.display = 'block';
+    });
+}
+
+async function startAnimation() {
+    showScreen('anim-screen');
+    const container = document.getElementById('anim-container');
+    const centerText = document.getElementById('anim-center-text');
+    
+    let glitchInterval = setInterval(() => {
+        let span = document.createElement('span');
+        span.className = 'glitch-word';
+        span.innerText = zzzKeywords[Math.floor(Math.random() * zzzKeywords.length)];
+        span.style.left = Math.random() * 90 + '%';
+        span.style.top = Math.random() * 90 + '%';
+        span.style.color = Math.random() > 0.8 ? '#ff4444' : (Math.random() > 0.5 ? '#55aaff' : '#555');
+        span.style.opacity = Math.random();
+        span.style.fontSize = (Math.random() * 1.5 + 0.5) + 'rem';
+        container.appendChild(span);
+        setTimeout(() => span.remove(), 150);
+    }, 30);
+
+    await new Promise(r => setTimeout(r, 2000));
+    clearInterval(glitchInterval);
+    container.innerHTML = '';
+
+    centerText.style.display = 'block';
+    centerText.innerText = '파에톤';
+    await new Promise(r => setTimeout(r, 350)); 
+    centerText.innerText += ' 님';
+
+    await new Promise(r => setTimeout(r, 1000));
+    
+    document.getElementById('anim-screen').classList.add('fade-out');
+    await new Promise(r => setTimeout(r, 1000));
+    document.getElementById('anim-screen').classList.remove('fade-out');
+    
+    startGame();
+}
+
+function startGame() {
+    state.floor = 1;
+    updateGameUI();
+    
+    document.getElementById('story-box').innerHTML = `
+        <p class="text-red">[F■a□i※y]</p>
+        <p>비비안 밴시는 전투 능력을 상실했습니다.<br>
+        파에톤, 당신에게 아직 인간의 마음이 남아있다면, 그녀가 죽지 않고 50층에 도달하도록 도와주세요.</p>
+        <hr style="border: 0.5px solid #333;">
+        <p><strong>[레테 공동]</strong><br>비비안 밴시의 몸이 떨리고 있다.</p>
+    `;
+
+    setupChoices([
+        { text: "(1) 파에톤.", action: () => handleChoiceResult("비비안 밴시의 눈에 총기가 돌아온다.", {hope: 100}) },
+        { text: "(2) 파에톤 님.", action: () => handleChoiceResult("비비안 밴시의 눈가가 촉촉해진다.", {will: 100}) }
+    ]);
+
+    showScreen('game-screen');
+}
+
+function updateGameUI() {
+    document.getElementById('current-floor').innerText = state.floor;
+    
+    let resoniumList = state.resoniums.length > 0 
+        ? state.resoniums.map(r => typeof r === 'object' ? (r.name || "오류") : r).join(', ') 
+        : "없음";
+    let titleList = state.titles.length > 0 ? state.titles.join(', ') : "없음"; 
+    
+    document.getElementById('status-window').innerHTML = `
+        <b>비비안 밴시</b><br>
+        <span class="text-red">HP: ${state.hp} / ${state.maxHp}</span><br>
+        상태: 컨디션이 완전히 무너져 있는 상태입니다. 일반 시민보다 허약합니다.<br><br>
+        의지: ${state.will} | 사랑: ${state.love}<br>
+        희망: ${state.hope} | 증오: ${state.hate}<br>
+        침식: ${state.corruption}<br>
+        레조니움: <span style="color:#55aaff">${resoniumList}</span><br>
+        칭호: <span style="color:#ffaa00">${titleList}</span><br><br>
+        <span style="font-size:11px; color:#aaa;">
+        기본 등장확률: 사건 35% 조우 35% 전투 22% 강적 7% 이변 1%
+        </span>
+    `;
+}
+
+function setupChoices(choices) {
+    const container = document.getElementById('choices-container');
+    container.innerHTML = '';
+    choices.forEach(c => {
+        let btn = document.createElement('button');
+        btn.innerText = c.text;
+        btn.onclick = c.action;
+        container.appendChild(btn);
+    });
+}
+
+function handleChoiceResult(resultText, statChanges) {
+    if(statChanges) {
+        if(statChanges.hp) state.hp += statChanges.hp;
+        if(statChanges.will) state.will += statChanges.will;
+        if(statChanges.hope) state.hope += statChanges.hope;
+    }
+    
+    if(state.hp > state.maxHp) state.hp = state.maxHp;
+    if(state.hp <= state.minHp) {
+        state.hp = 0;
+        checkDeathLogic();
+        return;
+    }
+
+    document.getElementById('result-box').innerHTML = resultText;
+    showScreen('result-screen');
+}
+
+// --- 2. 사망 판정 및 희망(부활) 로직 ---
+function checkDeathLogic() {
+    if (state.hp <= state.minHp) {
+        state.hp = 0;
+        
+        let reviveChance = Math.floor(state.hope / 10);
+        reviveChance = Math.min(93, reviveChance); 
+
+        if (Math.random() * 100 < reviveChance) {
+            state.hp = 10;
+            document.getElementById('story-box').innerHTML += `
+                <hr style="border: 0.5px solid #333;">
+                <p class="text-blue"><strong>[기적]</strong> 비비안 밴시가 죽음을 거부합니다.</p>
+            `;
+            updateGameUI();
+            return false; 
+        }
+
+        showScreen('ending-screen');
+        document.getElementById('ending-text').innerHTML = `
+            <h3>사망</h3>
+            <p>비비안 밴시의 체력이 0이 되었습니다.</p>
+            <p>도달한 층수: ${state.floor}층</p>
+            <p>파에톤에게 닿지 못한 채, 그녀는 공동의 어둠 속에 영원히 잠겼습니다.</p>
+        `;
+        return true; 
+    }
+    return false; 
+}
+
+// --- 3. 레조니움 획득 검사 로직 ---
+function checkResoniumAndNext() {
+    let baseResoniumChance = 5;
+    let resoniumBonus = Math.floor(state.will / 11);
+    let finalResoniumChance = clampProb(baseResoniumChance + resoniumBonus);
+
+    if (Math.random() * 100 < finalResoniumChance) {
+        let destroyChance = clampProb(Math.floor(state.hate / 10) * 2);
+        
+        if (Math.random() * 100 < destroyChance) {
+            document.getElementById('result-box').innerHTML += `
+                <div class="log-box log-penalty" style="margin-top:15px;">
+                    <strong>[증오 발현]</strong> 레조니움을 발견했으나, 내면의 증오가 폭주하여 산산조각 냈습니다.
+                </div>
+            `;
+            setTimeout(() => { proceedNextFloor(); }, 1500); 
+        } else {
+            let gainedName = gainResonium(); 
+            
+            document.getElementById('resonium-message').innerHTML = `
+                <p style="color:#cccccc;">${finalResoniumChance}% 확률에 당첨되어 레조니움을 획득합니다.</p>
+                <p style="font-size:24px; font-weight:bold; color:#ffaa00; margin:15px 0;">[ ${gainedName} ]</p>
+                <p style="color:#cccccc;">을(를) 획득했습니다!</p>
+            `;
+            
+            updateGameUI();
+            showScreen('resonium-screen');
+        }
+    } else {
+        proceedNextFloor();
+    }
+}
+
+// --- 4. 층 진입 프로세스 ---
+function proceedNextFloor() {
+    state.floor += 1;
+    if (state.floor >= 50) {
+        triggerEnding();
+        return;
+    }
+
+    if (state.floor % 10 === 0) {
+        event_SafeHouse();
+        return;
+    }
+
+    let tempProb = { ...state.prob };
+    let logMessages = [];
+
+    // 패시브 효과 UI 렌더링
+    let miracleChance = Math.min(93, Math.floor(state.hope / 10));
+    if (miracleChance > 0) logMessages.push(`<div class="log-box log-merit">[기적] 부활 확률이 ${miracleChance}% 증가했습니다.</div>`);
+
+    let resoniumBonus = Math.floor(state.will / 11);
+    if (resoniumBonus > 0) logMessages.push(`<div class="log-box log-merit">[타산지석] 레조니움 획득 확률이 ${resoniumBonus}%p 증가했습니다.</div>`);
+
+    let resistChance = Math.floor(state.will / 20);
+    if (resistChance > 0) logMessages.push(`<div class="log-box log-merit">[저를 비비안이라 불러주세요] 침식저항 확률이 ${resistChance}% 증가했습니다.</div>`);
+
+    let hateDestroyChance = clampProb(Math.floor(state.hate / 10) * 2);
+    if (hateDestroyChance > 0) logMessages.push(`<div class="log-box log-penalty">[증오 발현] 획득한 레조니움 파괴 확률이 ${hateDestroyChance}% 증가했습니다.</div>`);
+
+    let hateAnomalyChance = clampProb(Math.floor(state.hate / 10) * 2);
+    if (hateAnomalyChance > 0) logMessages.push(`<div class="log-box log-bright-red">[비인간찬가] 증오발작 확률이 ${hateAnomalyChance}% 증가했습니다.</div>`);
+
+    let loveInterceptChance = clampProb(Math.floor(state.love / 13));
+    if (loveInterceptChance > 0) logMessages.push(`<div class="log-box log-pink">[별빛 꿈을 누비는 새] 대성공 판정 확률이 ${loveInterceptChance}% 증가했습니다.</div>`);
+
+    let isSettlementFloor = (state.floor % 5 === 0);
+    if (!isSettlementFloor) {
+        let floorsUntilSettlement = 5 - (state.floor % 5);
+        logMessages.push(`<div class="log-box log-dark-red">다음 침식 결산까지 ${floorsUntilSettlement}층 남았습니다.</div>`);
+    } else {
+        logMessages.push(`<div class="log-box log-dark-red">이번 층에서 '침식 결산'이 진행됩니다!</div>`);
+    }
+
+    if (state.resoniums.includes("마르셀 개조 부품")) {
+        let bangbooLeft = Math.max(0, 10 - state.bangbooEncounterCount);
+        logMessages.push(`<div class="log-box log-info">[하늘을 누비는 섬으로?] 필요한 Bangboo와의 만남이 ${bangbooLeft}회 남았습니다.</div>`);
+    }
+    
+    // 레조니움 효과 처리
+    let phaethonCount = state.resoniums.filter(r => r === "파에톤의노래").length;
+    if (phaethonCount > 0) {
+        let willUp = 0; let loveUp = 0;
+        for (let i = 0; i < phaethonCount; i++) {
+            willUp += getRandomInt(11, 22); loveUp += getRandomInt(17, 27);
+        }
+        updateStats({will: willUp, love: loveUp});
+        logMessages.push(`<div class="log-box log-info">[파에톤의 노래] 비비안 밴시는 풋내 나던 시절 자신이 집필한 멜로디를 듣습니다. 잃어버린 줄 알았던 삶에의 의지가 차오릅니다. (의지)</div>`);
+    }
+
+    let yunqiuCount = state.resoniums.filter(r => r === "운규 이야기").length;
+    if (yunqiuCount > 0) {
+        let hateUp = 0;
+        for (let i = 0; i < yunqiuCount; i++) { hateUp += getRandomInt(5, 16); }
+        updateStats({hate: hateUp});
+        logMessages.push(`<div class="log-box log-penalty">[운규 이야기] 그 책장을 넘길 때마다 비비안 밴시의 무의식보다 깊은 어디에선가 알 수 없는 증오가 차오릅니다. (증오)</div>`);
+    }
+    
+    let hopePenalty = Math.floor(state.hope / 25);
+    if (hopePenalty > 0) {
+        tempProb.elite = clampProb(tempProb.elite + hopePenalty);
+        tempProb.event = clampProb(tempProb.event - hopePenalty);
+        logMessages.push(`<div class="log-box log-penalty">[희망 패널티] 맹목적인 희망이 강적을 불러들입니다. (강적 출현율 ${hopePenalty}%p 증가)</div>`);
+    }
+
+    // 침식 결산 로직
+    let anomalyChance = clampProb(Math.floor(state.hate / 10) * 2);
+    isSettlementFloor = (state.floor % 5 === 0);
+    let exemptSettlement = false;
+
+    if (Math.random() * 100 < anomalyChance) {
+        let roll = Math.random() * 100;
+        if (roll < 30) {
+            state.corruption = 10;
+            logMessages.push(`<div class="log-box log-penalty">[증오발작:침식보다 깊은 증오] 내면의 증오가 침식을 탐욕스럽게 먹어치웠습니다. 그녀가 정말 비비안 밴시가 맞는 걸까요?</div>`);
+        } else if (roll < 60) {
+            if (isSettlementFloor) {
+                exemptSettlement = true;
+                logMessages.push(`<div class="log-box log-merit">[증오발작:증오로 물든 삶] 증오가 공동의 독기를 집어삼켜, 이번 층의 '침식 결산'을 면제받습니다.</div>`);
+            }
+        } else if (roll < 90) {
+            let reduction = Math.floor(state.corruption * 0.5);
+            state.corruption -= reduction;
+            updateStats({hate: reduction});
+            logMessages.push(`<div class="log-box log-info">[증오발작:침식독] 침식 수치가 ${reduction}만큼 감소하고, 그 독기가 증오로 치환되었습니다.</div>`);
+        } else {
+            logMessages.push(`<div class="log-box log-penalty">[증오발작:정신착란] 결국, 비비안 밴시의 정신이 완전히 붕괴되었습니다...</div>`);
+            state.hp = 0; 
+        }
+    }
+
+    if (checkDeathLogic()) return;
+
+    let isImmuneThisFloor = false;
+    if (state.corruptionImmunityFloors > 0) {
+        isImmuneThisFloor = true;
+        state.corruptionImmunityFloors -= 1;
+        logMessages.push(`<div class="log-box log-merit">[침식억제제] 약효가 유지되어 침식으로부터 완전히 보호받습니다. (남은 지속: ${state.corruptionImmunityFloors}층)</div>`);
+    }
+
+    if (!isImmuneThisFloor) {
+        let resistChance = clampProb(Math.floor(state.will / 20));
+        if (Math.random() * 100 < resistChance) {
+            logMessages.push(`<div class="log-box log-merit">[저를 비비안이라 불러주세요] 강인한 정신이 이번 층의 침식 수치 증가를 막아냈습니다.</div>`);
+        } else {
+            state.corruption += 1;
+        }
+    }
+
+    if (isSettlementFloor && !exemptSettlement && !isImmuneThisFloor) {
+        let damage = Math.floor(state.corruption * 0.05); 
+        if (damage > 0) {
+            state.hp -= damage;
+            logMessages.push(`<div class="log-box log-penalty">[침식 결산] 공동의 독기가 몸을 갉아먹습니다. (HP -${damage})</div>`);
+        }
+    }
+
+    if (checkDeathLogic()) return;
+
+    updateGameUI();
+    generateRandomEvent(tempProb, logMessages);
+    showScreen('game-screen');
+}
+
+// 통합된 랜덤 이벤트 제너레이터
+function generateRandomEvent(probList = state.prob, logs = []) {
+    if (state.guaranteedAnomaly) {
+        triggerCategory_Anomaly(logs, state.guaranteedAnomaly);
+        state.guaranteedAnomaly = null; 
+        return;
+    }
+
+    let rand = Math.random() * 100;
+    
+    if (rand < probList.event) triggerCategory_Event(logs);
+    else if (rand < probList.event + probList.encounter) triggerCategory_Encounter(logs);
+    else if (rand < probList.event + probList.encounter + probList.combat) triggerCategory_Combat(logs);
+    else if (rand < 100 - probList.anomaly) triggerCategory_Elite(logs);
+    else triggerCategory_Anomaly(logs, "알 수 없는 이변");
+}
+
+// --- 카테고리별 라우터 및 이벤트 세부 구현 ---
+
+function triggerCategory_Event(logs) {
+    let rand = Math.floor(Math.random() * 100); 
+    
+    if (rand < 20) event_DestroyedBangboo(logs); 
+    else if (rand < 30) event_CampTrace(logs);        
+    else if (rand < 40) event_Ruins(logs);            
+    else if (rand < 60) event_HumanRemains(logs);     
+    else if (rand < 70) event_StrandedPerson(logs);   
+    else if (rand < 80) event_Dummy(logs, "미확정 A"); 
+    else if (rand < 88) event_Dummy(logs, "미확정 B"); 
+    else if (rand < 89) event_Dummy(logs, "미확정 C"); 
+    else if (rand < 90) event_Dummy(logs, "미확정 D"); 
+    else event_AgentEncounter(logs);   
+}
+
+function event_DestroyedBangboo(logs) { 
+    incrementBangbooCount();
+    let storyHtml = `${formatLogs(logs)}
+        <p><strong>[사건 : 파괴된 Bangboo]</strong></p>
+        <p>심하게 파손된 Bangboo의 잔해를 발견했다. 외관이 뭉개지긴 했지만 원형은 남아있다. 투척용으로 가져 간다면 생존 확률이 증가할 것이다.</p>`;
+
+    let despairChance = clampProb(30 + (state.hate >= 400 ? 30 : 0));
+    if (Math.random() * 100 < despairChance) {
+        let despairVal = getRandomInt(26, 211);
+        updateStats({hope: -despairVal});
+        storyHtml += `<p class="text-red"><em>텅 빈 카메라 눈동자의 어둠에 압도된다. (희망 감소)</em></p>`;
+    }
+
+    let nostalgiaChance = clampProb(5 + (state.will >= 700 ? 40 : 0));
+    if (Math.random() * 100 < nostalgiaChance) {
+        updateStats({hope: 77});
+        storyHtml += `<p class="text-blue"><em>마지막까지 쥐고 있던 머플러에 남은 잔향을 느낀다. (희망 증가)</em></p>`;
+    }
+
+    document.getElementById('story-box').innerHTML = storyHtml;
+
+    setupChoices([
+        { 
+            text: "(1) 시선을 피하며 그것을 줍는다.", 
+            action: () => {
+                state.bangbooShieldActive = true;
+                let resultText = "하지만 그것은 그녀를 보고 있다.<br>";
+                if (Math.random() * 100 < 50) {
+                    updateStats({hope: getRandomInt(22, 170), will: -getRandomInt(11, 88)});
+                    resultText += `<br><span class="text-blue">눈을 마주치지 않으면 괜찮다.</span>`;
+                }
+                handleChoiceResult(resultText, null);
+            } 
+        },
+        { 
+            text: "(2) 그 마지막 모습을 눈에 담으며 그것을 줍는다.", 
+            action: () => {
+                state.bangbooShieldActive = true;
+                let resultText = "이 작은 것이 무엇을 할 수 있었을까.<br>";
+                if (Math.random() * 100 < 50) {
+                    updateStats({will: getRandomInt(77, 246), hope: -getRandomInt(33, 143)});
+                    resultText += `<br><span class="text-blue">이 Bangboo의 주인은 살아남았을까?</span>`;
+                }
+                handleChoiceResult(resultText, null);
+            } 
+        }
+    ]);
+}
+
+function event_CampTrace(logs) {
+    document.getElementById('story-box').innerHTML = `${formatLogs(logs)}
+        <p><strong>[사건 : 캠프 흔적]</strong></p>
+        <p>누군가 머물다 간 캠프의 흔적이다. (아직 안 씀)</p>`;
+
+    setupChoices([
+        { 
+            text: "캠프를 샅샅이 조사한다", 
+            action: () => {
+                let resultText = "캠프의 흔적을 뒤적거렸습니다.<br>";
+                let foundSomething = false;
+
+                if (Math.random() * 100 < 5) {
+                    gainResonium("침식억제제"); 
+                    resultText += `<br><span class="text-green"><strong>[레조니움] '침식억제제'</strong>를 발견했습니다! (앞으로 5층간 침식 완벽 면역)</span>`;
+                    foundSomething = true;
+                }
+                if (Math.random() * 100 < 20) {
+                    let gainedName = gainResonium(); 
+                    resultText += `<br><span class="text-blue"><strong>[레조니움] [${gainedName}]</strong>을(를) 발견했습니다.</span>`;
+                    foundSomething = true;
+                }
+                if (Math.random() * 100 < 5) {
+                    updateStats({hp: -1});
+                    resultText += `<br><span class="text-red"><strong>[부비트랩!]</strong> 숨겨진 함정이 작동했습니다. (HP -1)</span>`;
+                    foundSomething = true;
+                }
+                if (!foundSomething) resultText += "<br>먼지만 날릴 뿐, 가치 있는 것은 없었습니다.";
+
+                handleChoiceResult(resultText, null);
+            } 
+        },
+        { text: "위험할지 모르니 무시하고 지나간다", action: () => handleChoiceResult("캠프를 뒤로하고 길을 재촉합니다.", null) }
+    ]);
+}
+
+function event_Ruins(logs) {
+    document.getElementById('story-box').innerHTML = `${formatLogs(logs)}<p><strong>[사건 : 폐허]</strong></p><p>무너진 건축물의 잔해가 흩어져 있는 폐허를 발견했습니다.</p>`;
+    setupChoices([
+        { text: "폐허를 탐색한다", action: () => handleChoiceResult("폐허를 뒤졌습니다. (내용 미구현)", null) },
+        { text: "지나친다", action: () => handleChoiceResult("폐허를 지나쳐 전진합니다.", null) }
+    ]);
+}
+
+function event_HumanRemains(logs) {
+    document.getElementById('story-box').innerHTML = `${formatLogs(logs)}<p><strong>[사건 : 인간의 잔해]</strong></p><p>에테리얼에게 당한 듯한 참혹한 잔해를 발견했습니다.</p>`;
+    setupChoices([
+        { text: "소지품을 확인한다", action: () => handleChoiceResult("잔해를 뒤졌습니다. (내용 미구현)", null) },
+        { text: "애도를 표하고 지나간다", action: () => handleChoiceResult("묵념 후 발길을 돌립니다.", null) }
+    ]);
+}
+
+function event_StrandedPerson(logs) {
+    document.getElementById('story-box').innerHTML = `${formatLogs(logs)}<p><strong>[사건 : 조난자]</strong></p><p>공동의 부유물에 엉겨 붙어 고통스러워하는 조난자를 발견했습니다.</p>`;
+    setupChoices([
+        { text: "강하게 떼어낸다", action: () => handleChoiceResult("조난자를 강하게 잡아당겨 떼어냈습니다. (결과 미구현)", null) },
+        { text: "주의해서 천천히 떼어낸다", action: () => handleChoiceResult("시간을 들여 조심스럽게 조난자를 구출했습니다. (결과 미구현)", null) },
+        { text: "외면한다", action: () => handleChoiceResult("조난자의 비명을 뒤로하고 나아갑니다.", null) }
+    ]);
+}
+
+function event_AgentEncounter(logs) {
+    let seedChance = state.love >= 250 ? 50 : 10;
+    
+    if (Math.random() * 100 < seedChance) {
+        document.getElementById('story-box').innerHTML = `${formatLogs(logs)}<p><strong>[사건 : 에이전트 조우 - 시드]</strong></p><p>에이전트 '시드'와 마주쳤습니다.</p>`;
+        setupChoices([{ 
+            text: "대화를 나눈다", 
+            action: () => {
+                let resultText = "시드와 짧은 대화를 나누었습니다.<br>";
+                if (Math.random() * 100 < 80) {
+                    let gainedName = gainResonium();
+                    resultText += `<br><span class="text-blue">시드가 떠나기 전 <strong>[${gainedName}]</strong>을(를) 건네주었습니다.</span>`;
+                } else {
+                    resultText += "<br>그녀는 별다른 도움 없이 홀연히 사라졌습니다.";
+                }
+                handleChoiceResult(resultText, null);
+            } 
+        }]);
+    } else {
+        document.getElementById('story-box').innerHTML = `${formatLogs(logs)}<p><strong>[사건 : 에이전트 조우]</strong></p><p>알 수 없는 다른 에이전트와 마주쳤습니다.</p>`;
+        setupChoices([{ text: "지나친다", action: () => handleChoiceResult("가벼운 목례만 나누고 헤어졌습니다.", null) }]);
+    }
+}    
+
+function event_Dummy(logs, title) {
+    document.getElementById('story-box').innerHTML = `${formatLogs(logs)}<p><strong>[사건 : ${title}]</strong></p><p>고립된 공동의 조용한 구역입니다.</p>`;
+    setupChoices([{ text: "다음으로 나아간다", action: () => handleChoiceResult("별다른 일 없이 지나쳤습니다.", null) }]);
+}
+
+function triggerCategory_Anomaly(logs, forcedName = null) {
+    let targetAnomaly = forcedName;
+    if (!targetAnomaly) {
+        let rand = Math.floor(Math.random() * 100);
+        if (rand < 15) targetAnomaly = "공허사냥꾼";            
+        else if (rand < 50) targetAnomaly = "칭송회";           
+        else if (rand < 75) targetAnomaly = "마르셀 그룹";      
+        else targetAnomaly = "화이트스타 학회";                 
+    }
+
+    if (targetAnomaly === "공허사냥꾼") anomaly_VoidHunter(formatLogs(logs));
+    else anomaly_Dummy(formatLogs(logs), targetAnomaly);
+}
+
+function anomaly_VoidHunter(logHTML) {
+    document.getElementById('story-box').innerHTML = `${logHTML}
+        <p><strong>[이변 : 공허사냥꾼]</strong></p>
+        <p>심연의 끝자락에서, 모든 것을 가르는 궤적을 마주합니다.<br>어둠 속의 절대적인 무력이 당신에게 깃듭니다.</p>`;
+
+    setupChoices([{
+        text: "힘을 받아들인다",
+        action: () => {
+            updateStats({hp: 150});
+            if (!state.titles.includes("공허사냥꾼")) state.titles.push("공허사냥꾼");
+            handleChoiceResult(`
+                <p class="text-blue"><strong>[칭호 획득: 공허사냥꾼]</strong></p>
+                <p>막대한 생명력이 차오릅니다. (HP +150)<br>이제 모든 전투와 강적을 압도적인 힘으로 분쇄합니다.</p>
+            `, null);
+        }
+    }]);
+}
+
+function anomaly_Dummy(logHTML, title) {
+    document.getElementById('story-box').innerHTML = `${logHTML}
+        <p class="text-blue"><strong>[이변 루트 진입 : ${title}]</strong></p>
+        <p>기이한 흐름에 이끌려 특수한 루트에 진입합니다. (추후 내용 구현 예정)</p>`;
+    setupChoices([{ text: "다음으로 나아간다", action: () => handleChoiceResult("이변의 여파를 넘겼습니다.", null) }]);
+}
+
+function triggerCategory_Encounter(logs) {
+    let rand = Math.floor(Math.random() * 100); 
+    
+    if (rand < 20) encounter_MedicalTeam(logs);          
+    else if (rand < 30) encounter_LostBangboo(logs);     
+    else if (rand < 35) encounter_GoldenBangboo(logs);   
+    else if (rand < 40) encounter_Dummy(logs, "공허사냥꾼"); 
+    else if (rand < 45) encounter_Dummy(logs, "광신도");     
+    else if (rand < 55) encounter_Dummy(logs, "나이트워커"); 
+    else if (rand < 60) encounter_Dummy(logs, "함정");       
+    else if (rand < 65) encounter_Dummy(logs, "환영공간");   
+    else encounter_Dummy(logs, "임시 더미");                    
+}
+
+function encounter_MedicalTeam(logs) {
+    document.getElementById('story-box').innerHTML = `${formatLogs(logs)}<p><strong>[조우 : 의료팀]</strong></p><p>방호복을 입은 자원 의료팀과 조우했습니다.</p>`;
+    setupChoices([{
+        text: "치료를 부탁한다",
+        action: () => {
+            let r = Math.random() * 100;
+            if (r < 80) {
+                let healAmount = getRandomInt(1, 3);
+                updateStats({hp: healAmount});
+                handleChoiceResult(`의료팀의 도움으로 상처를 치료했습니다. (HP +${healAmount})`, null);
+            } else if (r < 90) { 
+                updateStats({hp: 5});
+                handleChoiceResult(`<p class="text-blue"><strong>[대성공 판정]</strong> 의료팀의 집중 치료를 받아 몸이 눈에 띄게 가벼워집니다! (HP +5)</p>`, null);
+            } else { 
+                handleChoiceResult(`<p class="text-red">의료팀이 당신의 심각한 상태를 보고는 고개를 저으며 치료를 거부했습니다. 아무 일도 일어나지 않았습니다.</p>`, null);
+            }
+        }
+    }]);
+}
+
+function encounter_LostBangboo(logs) {
+    incrementBangbooCount(); 
+    document.getElementById('story-box').innerHTML = `${formatLogs(logs)}<p><strong>[조우 : 길 잃은 방부]</strong></p><p>길을 잃고 헤매는 방부를 발견했습니다.</p>`;
+    setupChoices([{
+        text: "방부에게 다가간다",
+        action: () => {
+            let r = Math.random() * 100;
+            if (r < 80) {
+                state.combatImmuneActive = true;
+                handleChoiceResult(`길 잃은 방부가 길잡이가 되어줍니다. (다음 일반 전투 피해 1회 면제)`, null);
+            } else if (r < 98) { 
+                state.prob.anomaly = clampProb(state.prob.anomaly + 2); 
+                handleChoiceResult(`방부가 알 수 없는 신호를 뿜어냅니다... (이후 탐사에서 이변 등장 확률 2% 상승)`, null);
+            } else if (r < 99) { 
+                gainResonium("마르셀 개조 부품");
+                handleChoiceResult(`<p class="text-blue"><strong>[대성공 판정]</strong> 방부 안에서 희귀한 부품을 찾아냈습니다!<br><strong>[레조니움: 마르셀 개조 부품]</strong> 획득.</p>`, null);
+            } else { 
+                updateStats({hp: -2});
+                handleChoiceResult(`<p class="text-red">다가가자 방부가 갑자기 오작동하며 당신을 공격합니다! (HP -2)</p>`, null);
+            }
+        }
+    }]);
+}
+
+function encounter_GoldenBangboo(logs) {
+    incrementBangbooCount(); 
+    document.getElementById('story-box').innerHTML = `${formatLogs(logs)}<p><strong>[조우 : 황금 방부]</strong></p><p>희귀한 황금 방부와 마주쳤습니다!</p>`;
+    setupChoices([{
+        text: "황금 방부를 살펴본다",
+        action: () => {
+            let r = Math.random() * 100;
+            if (r < 1) { 
+                state.guaranteedAnomaly = "화이트스타 학회";
+                handleChoiceResult(`<p class="text-blue"><strong>[대성공 판정]</strong> 황금 방부가 놀라운 좌표 데이터를 남기고 사라졌습니다! (다음 층 '화이트스타 학회' 이변 발생 확정)</p>`, null);
+            } else { 
+                handleChoiceResult(`황금 방부는 당신을 빤히 쳐다보더니 그대로 도망쳤습니다. 아무 일도 일어나지 않았습니다.`, null);
+            }
+        }
+    }]);
+}
+
+function encounter_Dummy(logs, title) {
+    document.getElementById('story-box').innerHTML = `${formatLogs(logs)}<p><strong>[조우 : ${title}]</strong></p><p>발견했지만, 아직 구체적인 상호작용이 불가능합니다.</p>`;
+    setupChoices([{ text: "다음으로 나아간다", action: () => handleChoiceResult("그대로 발길을 돌렸습니다.", null) }]);
+}
+
+function triggerCategory_Combat(logs) {
+    const enemies = ["에테리얼"];
+    let enemyName = enemies[Math.floor(Math.random() * enemies.length)];
+
+    if (state.titles.includes("공허사냥꾼")) {
+        document.getElementById('story-box').innerHTML = `${formatLogs(logs)}
+            <p><strong>[전투 발생]</strong></p>
+            <p class="text-red"><strong>${enemyName}</strong>(이)가 나타났습니다.</p>
+            <p class="text-blue">하지만 당신은 <strong>'공허사냥꾼'</strong>입니다. 적은 추수될 운명에 불과합니다.</p>`;
+        
+        setupChoices([{
+            text: "압도적인 무력으로 처치한다",
+            action: () => {
+                let gainedName = gainResonium();
+                handleChoiceResult(`<p class="text-blue">검광이 번뜩이자 적은 흔적도 없이 사라졌습니다.<br><strong>[레조니움 획득: ${gainedName}]</strong></p>`, null);
+            }
+        }]);
+        return; 
+    }
+
+    document.getElementById('story-box').innerHTML = `${formatLogs(logs)}
+        <p><strong>[전투 발생]</strong></p>
+        <p class="text-red"><strong>${enemyName}</strong>(이)가 나타났습니다. 비비안은 싸울 힘이 없습니다.</p>`;
+
+    const processCombatResult = (statChangeTitle, statChangeObj) => {
+        let r = Math.random() * 100;
+        let damage = 0;
+        let resultMsg = "";
+
+        if (state.combatImmuneActive) {
+            state.combatImmuneActive = false;
+            resultMsg = `<p class="text-blue"><strong>[길 잃은 방부의 도움]</strong> 방부의 안내 덕분에 전투를 피해 안전하게 빠져나갔습니다! (피해 면제)</p>`;
+        } else if (state.bangbooShieldActive) {
+            let blockAmount = getRandomInt(1, 3); // 버그 픽스: 피해 상쇄량 수정
+            state.bangbooShieldActive = false;
+            resultMsg = `<p class="text-blue"><strong>[파괴된 방부 투척]</strong> 방부 잔해를 던져 주위를 끌었습니다. (${blockAmount}의 피해를 막아내고 도주 성공)</p>`;
+        } else {
+            if (r < 80) {
+                damage = getRandomInt(1, 5);
+                resultMsg = `필사적으로 도망쳤지만 상처를 입었습니다. (HP -${damage})`;
+            } else if (r < 90) { 
+                damage = 7;
+                resultMsg = `<span class="text-red">치명적인 공격을 허용했습니다! (HP -7)</span>`;
+            } else if (r < 99) { 
+                resultMsg = `<span class="text-blue">운 좋게 적의 시야에서 벗어나 완벽히 도주했습니다.</span>`;
+            } else { 
+                resultMsg = `<p class="text-blue"><strong>[대성공 판정]</strong> 운명의 여신이 미소 지어, 티끌 하나 다치지 않고 완벽하게 도주했습니다!</p>`;
+            }
+        }
+
+        updateStats(statChangeObj);
+        updateStats({ hp: -damage });
+        
+        handleChoiceResult(`${statChangeTitle}<br><br>${resultMsg}`, null);
+    };
+
+    setupChoices([
+        { text: "겁에 질려 도망친다 (의지 하락)", action: () => processCombatResult("공포에 휩싸여 도망쳤습니다. (의지 하락 적용)", {will: -5}) },
+        { text: "살아야 한다는 생각조차 잊은 채 도망친다 (희망 하락)", action: () => processCombatResult("본능만이 몸을 움직입니다. (희망 하락 적용)", {hope: -5}) }
+    ]);
+}
+
+function triggerCategory_Elite(logs) {
+    const elites = ["니네베", "새크리파이스", "미아즈마 프리스트"];
+    let eliteName = elites[Math.floor(Math.random() * elites.length)];
+
+    if (state.titles.includes("공허사냥꾼")) {
+        document.getElementById('story-box').innerHTML = `${formatLogs(logs)}
+            <p><strong>[강적 조우]</strong></p>
+            <p class="text-red">압도적인 위압감. <strong>${eliteName}</strong>을(를) 만났습니다.</p>
+            <p class="text-blue">하지만 <strong>'공허사냥꾼'</strong>의 검 앞에서는 이조차 한낱 미물일 뿐입니다.</p>`;
+        
+        setupChoices([{
+            text: "단칼에 베어버린다",
+            action: () => {
+                let gainedName = gainResonium();
+                handleChoiceResult(`<p class="text-blue">위압감은 덧없이 흩어지고, 전리품만이 남았습니다.<br><strong>[레조니움 획득: ${gainedName}]</strong></p>`, null);
+            }
+        }]);
+        return; 
+    }
+
+    document.getElementById('story-box').innerHTML = `${formatLogs(logs)}
+        <p><strong>[강적 조우]</strong></p>
+        <p class="text-red">압도적인 위압감. <strong>${eliteName}</strong>을(를) 만났습니다. 도망치십시오.</p>`;
+
+    const processEliteResult = (statChangeTitle, statChangeObj) => {
+        let r = Math.random() * 100;
+        let damage = 0;
+        let resultMsg = "";
+
+        if (state.bangbooShieldActive) {
+            let blockAmount = getRandomInt(1, 3); // 버그 픽스: 피해 상쇄량 수정
+            state.bangbooShieldActive = false;
+            damage = Math.max(0, 15 - blockAmount); 
+            resultMsg = `<p class="text-blue"><strong>[파괴된 방부 투척]</strong> 방부 잔해를 미끼로 던졌습니다! (${blockAmount}의 피해 상쇄)</p>`;
+            if(damage > 0) resultMsg += `<br>하지만 강적의 일격을 완전히 막을 순 없었습니다. (HP -${damage})`;
+            else resultMsg += `<br>기적적으로 몸을 피했습니다.`;
+        } else {
+            if (r < 8) { 
+                damage = 7;
+                resultMsg = `죽을힘을 다해 굴러 운 좋게 빗맞았습니다. (HP -7)`;
+            } else if (r < 10) { 
+                resultMsg = `<p class="text-blue"><strong>[대성공 판정]</strong> 기적적인 도주에 성공했습니다!</p>`;
+                if (Math.random() * 100 < 50) {
+                    state.prob.anomaly = clampProb(state.prob.anomaly + 3);
+                    resultMsg += `<br><em>도주 과정에서 공간의 균열을 건드렸습니다... (이변 등장 확률 3% 상승)</em>`;
+                }
+            } else { 
+                damage = 15;
+                resultMsg = `<span class="text-red">강적의 압도적인 공격에 무참히 휩쓸렸습니다. (HP -15)</span>`;
+            }
+        }
+
+        updateStats(statChangeObj);
+        updateStats({ hp: -damage });
+        
+        handleChoiceResult(`${statChangeTitle}<br><br>${resultMsg}`, null);
+    };
+
+    let eliteChoices = [
+        { text: "시야가 암전되며 도망친다 (의지 하락)", action: () => processEliteResult("정신이 아득해집니다. (의지 하락 적용)", {will: -10}) },
+        { text: "모든 것을 포기하고 도망친다 (희망 하락)", action: () => processEliteResult("어떤 기대도 남지 않았습니다. (희망 하락 적용)", {hope: -10}) }
+    ];
+
+    if (state.love >= 700) eliteChoices.push({ text: "[특수] 끈질긴 인연의 실마리를 부여잡는다", action: () => processEliteResult("누군가의 온기를 떠올리며 초인적인 힘을 냅니다.", {love: -5}) });
+    if (state.hate >= 500) eliteChoices.push({ text: "[특수] 분노를 토해내며 짐승처럼 도망친다", action: () => processEliteResult("증오가 다리를 움직이는 원동력이 됩니다.", {hate: -5}) });
+
+    setupChoices(eliteChoices);
+}
+
+function event_SafeHouse() {
+    document.getElementById('story-box').innerHTML = `
+        <p class="text-green"><strong>[${state.floor}층 도달 : 버려진 안전 가옥]</strong></p>
+        <p>공동의 몬스터들도, 지독한 침식도 닿지 않는 기적적인 안전 구역을 발견했습니다.<br>잠시 숨을 고르고 나아갈 수 있습니다.</p>
+    `;
+
+    setupChoices([
+        { 
+            text: "깊은 잠에 빠진다 (HP 15 회복)", 
+            action: () => {
+                updateStats({hp: 15});
+                handleChoiceResult("<p class='text-blue'>오랜만에 악몽 없는 단잠을 잤습니다. 체력이 크게 회복됩니다. (HP +15)</p>", null);
+            } 
+        },
+        { 
+            text: "비상 물자를 챙긴다 (무작위 레조니움 1개 획득)", 
+            action: () => {
+                let gainedName = gainResonium();
+                handleChoiceResult(`<p class='text-blue'>찬장 구석에서 온전한 레조니움을 발견했습니다!<br><strong>[레조니움 획득: ${gainedName}]</strong></p>`, null);
+            } 
+        },
+        { 
+            text: "명상한다 (의지 +50, 희망 +50, 침식 -3)", 
+            action: () => {
+                let corruptReduce = Math.min(state.corruption, 3);
+                updateStats({will: 50, hope: 50, corruption: -corruptReduce});
+                handleChoiceResult(`<p class='text-blue'>내면의 혼란을 가라앉힙니다. 맑은 정신이 돌아옵니다. (의지 +50, 희망 +50, 침식 -${corruptReduce})</p>`, null);
+            } 
+        }
+    ]);
+}
+
+function triggerEnding() {
+    showScreen('ending-screen');
+    let endingText = "";
+    
+    if (state.hp === 1) endingText = "엔딩 A: 기적 (HP 1)";
+    else if (state.hp < 5) endingText = "엔딩 B: 처절한 몸부림 (HP < 5)";
+    else if (state.hp < 10) endingText = "엔딩 C: 부서진 조각들 (HP < 10)";
+    else if (state.hp < 19) endingText = "엔딩 D: 닿을 수 없는 손 (HP < 19)";
+    else if (state.hp < 20) endingText = "엔딩 E: 미련 (HP < 20)";
+    else if (state.hp < 50) endingText = "엔딩 F: 새로운 시작 (HP < 50)";
+    else if (state.hp >= 100) endingText = "엔딩 G: 진실의 문 (HP >= 100)";
+    else endingText = "엔딩 H: (HP 50~99 구간 임의 처리)";
+
+    document.getElementById('ending-text').innerHTML = `
+        <h3>50층 도달</h3>
+        <p>남은 HP: ${state.hp}</p>
+        <p class="text-blue">${endingText}</p>
+        <p>비비안 밴시의 이야기는 여기서 일단락됩니다. (추후 스토리 추가)</p>
+    `;
+}
+</script>
+</body>
+</html>
+        
+        /* Typography & Buttons */
+        h1, h2, h3 { text-align: center; color: #fff; }
+        button {
+            background-color: #333;
+            color: #fff;
+            border: 1px solid #555;
+            padding: 15px;
+            margin: 5px 0;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: 0.2s;
+        }
+        button:hover { background-color: #444; }
+        
+        /* Intro Screen */
+        #intro-text {
+            font-size: 15px;
+            line-height: 1.6;
+            flex-grow: 1;
+            white-space: pre-wrap;
+            overflow-y: auto;
+        }
+
+        /* Animation Screen */
+        #anim-screen {
+            position: relative;
+            background-color: #000;
+        }
+        .glitch-word { position: absolute; font-weight: bold; }
+        #anim-center-text {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 2rem;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 0 0 10px rgba(255,255,255,0.5);
+        }
+
         /* Game Screen Layout (이미지 참고 적용) */
         .top-bar { text-align: center; font-size: 20px; font-weight: bold; margin-bottom: 20px; }
         .profile-status-container {
