@@ -240,7 +240,7 @@ body {
     
     <!-- Start Screen -->
     <div id="start-screen" class="screen active">
-        <h1>공동 탐사 시뮬레이터 V2 0.26</h1>
+        <h1>공동 탐사 시뮬레이터 V2</h1>
         <button onclick="startGameIntro()">게임 시작</button>
     </div>
 
@@ -525,7 +525,7 @@ function processFloor() {
 
     function runFloor1Event() {
         setEventTitle("[F■a□i※y]");
-        setEventDesc(`파에톤, 당신에게 아직 인간의 마음이 남아있다면, 그녀가 죽지 않고 50층에 도달하도록 도와주세요.\n\n[레테 공동]\n비비안 밴시의 몸이 떨리고 있다.`);
+        setEventDesc(`파에톤, 당신에게 아직 인간의 마음이 남아있다면, 그녀가 죽지 않고 20층에 도달하도록 도와주세요.\n\n[레테 공동]\n비비안 밴시의 몸이 떨리고 있다.`);
         
         addButton("(1) 파에톤", () => {
             state.baseMaxHp = 100;
@@ -954,26 +954,26 @@ function checkPlayerDeath() {
 // --- 엔딩 텍스트 스킵을 위한 전역 변수 ---
     let isEndingSkipped = false;
 
-    async function winGame() {
+async function winGame() {
         setEventTitle("[공동 20층 도착]");
         const textEl = document.getElementById('event-desc');
-        textEl.innerHTML = ''; // 기존 텍스트 지우기
-        clearButtons(); // 기존 버튼 모두 숨기기
+        textEl.innerHTML = ''; 
+        clearButtons(); 
         
+        // [버그 픽스] 엔딩 화면 진입 시 적 상태창을 확실하게 숨깁니다.
+        document.getElementById('enemy-status').style.display = 'none';
+
         const endingTextRaw = `레테 공동의 20층, 텅 비어있는 것 같은 황야에 비비안 밴시는 발을 들였다.\n헛소문이었던걸까?\n아마 그럴 것이다. 공동에서는 어떤 신비로운 일들이라도 일어난다고 하지만, 죽은 사람이 되살아난다거나 시간을 돌리는 일 따위는...\n"비비안?"\n그리운 목소리에 비비안 밴시는 고개를 돌렸다.\n\n태양보다 찬란한 빛이 공동을 비추고, 마침내 비비안은 파에톤과 재회했다.\n\n모든 시련을 이겨내고 마침내 목적지에 도달했습니다.`;
 
-        isEndingSkipped = false; // 스킵 상태 초기화
+        isEndingSkipped = false; 
 
-        // 화면(이벤트 섹션) 클릭 시 스킵 처리하는 이벤트 리스너
         const eventSec = document.getElementById('event-section');
         const skipHandler = () => {
             isEndingSkipped = true;
         };
         eventSec.addEventListener('click', skipHandler);
 
-        // 타이핑 효과 루프
         for (let i = 0; i < endingTextRaw.length; i++) {
-            // 스킵이 발동되면 전체 텍스트를 바로 출력하고 루프 종료
             if (isEndingSkipped) {
                 textEl.innerHTML = endingTextRaw;
                 break;
@@ -981,19 +981,15 @@ function checkPlayerDeath() {
 
             textEl.innerHTML += endingTextRaw[i];
             
-            // 마침표나 줄바꿈에서는 조금 더 길게 쉬어가는 딜레이
             let delay = endingTextRaw[i] === '.' || endingTextRaw[i] === '?' || endingTextRaw[i] === '\n' ? 50 : 30;
             await new Promise(r => setTimeout(r, delay));
             
-            // 텍스트가 길어지면 자동으로 아래로 스크롤
             if(i % 5 === 0) eventSec.scrollTop = eventSec.scrollHeight;
         }
 
-        // 텍스트 출력이 끝났으므로 이벤트 리스너 제거
         eventSec.removeEventListener('click', skipHandler);
-        eventSec.scrollTop = eventSec.scrollHeight; // 최종 스크롤 하단 고정
+        eventSec.scrollTop = eventSec.scrollHeight; 
         
-        // 텍스트 출력이 모두 끝난 뒤에 비로소 재시작 버튼 표시
         addButton("다시 한 번 탐사 시작하기", () => {
             resetGame();
         });
