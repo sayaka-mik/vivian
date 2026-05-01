@@ -287,11 +287,11 @@
 let baseRevive = Math.floor(state.love / 11);
 
         let effects = [];
-        effects.push(`[저를 비비안이라 불러주세요] 사랑 수치에 의한 불굴 확률이 ${baseRevive}% 상승했습니다.`);
+        effects.push(`[저를 비비안이라 불러주세요] 부활 확률이 ${baseRevive}% 상승했습니다.`);
         
         // 추가 부활 버프가 0보다 클 때만 한 줄을 추가
         if(state.bonusRevive > 0) {
-            effects.push(`[파에톤의 노래] 부활 확률이 추가로 ${state.bonusRevive}% 상승했습니다.`);
+            effects.push(`[파에톤의 노래(DISC)] 부활 확률이 추가로 ${state.bonusRevive}% 상승했습니다.`);
         }
         
         effects.push(`[갈대 숲의 바람]이 불어올 확률이 ${getStrongEnemyChance()}% 상승했습니다.`);
@@ -435,6 +435,10 @@ function processFloor() {
             let loveGain = rand(21, 48);
             state.love += loveGain;
             
+            if(state.love > maxLove) {
+                state.love = maxLove;
+            }
+
             // 데니와 레조니움으로 얻는 보정치 계산
             let atkBonus = Math.floor(state.denny / 3);
             let hpBonus = Math.floor(state.resonium / 2);
@@ -506,7 +510,7 @@ function rollRandomEvent() {
             else startCombat('normal');
         } else if(r <= 80) { // 사건 40%
             // [수정된 부분] 5가지 사건 중 하나를 랜덤으로 실행
-            const events = [runEventBangboo, runEventSisia, runEventWhiteStar, runEventSong, runEventRaider];
+            const events = [runEventBangboo, runEventCissia, runEventWhiteStar, runEventSong, runEventRaider, runEventMarcel, runEventSeed, runEventNicole];
             let chosenEvent = events[rand(0, events.length - 1)];
             chosenEvent();
         } else { // 은행 20%
@@ -537,18 +541,20 @@ function rollRandomEvent() {
     }
 
     // --- 신규 사건 1: 시시아 ---
-    function runEventSisia() {
+    function runEventCissia() {
         setEventTitle("[사건 : 시시아와의 조우]");
         setEventDesc(`레테 공동에서 시시아를 마주쳤다. 파에톤이 죽은 뒤 그녀도 떠돌이가 되었던가. 랜덤플레이 잔해 위에서 머물고 있다는 소식은 들었는데...\n\n시시아는 비비안에게 사랑의 기억을 사겠다고 제안한다. 그녀는 파에톤에 대한 추억이 잊혀지는 게 싫다고 호소했다.`);
         
-        addButton("제안에 응한다.", () => {
+addButton("제안에 응한다.", () => {
             let amount = Math.floor(state.love / 2);
+            // [수정된 부분] 소모한 사랑의 70%만큼만 데니로 교환
+            let dennyGain = Math.floor(amount * 0.7); 
+            
             state.love -= amount;
-            state.denny += amount;
-            appendLog(`보유한 사랑의 50%(${amount})를 데니로 1:1 비율로 교환했습니다.`);
+            state.denny += dennyGain;
+            appendLog(`"보유한 사랑의 50%(${amount})를 데니 ${dennyGain}개와 교환했습니다."`);
             updateUI(); finishEvent();
         });
-        
         addButton("제안에 응하지 않는다.", () => {
             appendLog(`소중한 추억은 넘겨줄 수 없다.`);
             updateUI(); finishEvent();
@@ -630,6 +636,68 @@ function rollRandomEvent() {
         });
     }
 
+// --- 신규 사건 5: 마르셀 연구원 ---
+    function runEventMarcel() {
+        setEventTitle("[사건 : 마르셀 연구원]");
+        setEventDesc(`공동 안을 서성거리는 수상한 연구원을 발견했다. 연구원이 이쪽으로 다가오더니 제안한다.\n\n"네가 가진 데니를 모두 내게 주지 않을래? 그럼 레조니움을 줄게."\n\n비비안 밴시가 거절하자 그는 이렇게 말한다.\n\n"그럼 네가 가진 레조니움을 모두 내게 주지 않을래? 그럼 데니를 줄게."\n\n비비안 밴시는 그런 일에 무슨 의미가 있느냐고 묻는다.\n\n"내가 가진 빨간 방부는 데니를 원하고, 파란 방부는 레조니움을 원하거든."`);
+        
+        addButton("수상한 제안에 응한다.", () => {
+            // 데니와 레조니움 스왑 로직
+            let temp = state.denny;
+            state.denny = state.resonium;
+            state.resonium = temp;
+            
+            appendLog(`눈을 떠보니 연구원은 사라져 있었다.\n(데니와 레조니움의 개수가 서로 바뀌었습니다.)`);
+            updateUI(); finishEvent();
+        });
+        
+        addButton("연구원에게서 등을 돌린다.", () => {
+            state.resonium += 20;
+            appendLog(`뒤에도 연구원이 있었다. 하지만 눈을 떠보니 그것은 이미 사라져 있다.\n(레조니움 20개를 획득했습니다.)`);
+            updateUI(); finishEvent();
+        });
+    }
+
+    // --- 신규 사건 6: 파에톤 (시드) ---
+    function runEventSeed() {
+        setEventTitle("[사건 : 파에톤]");
+        setEventDesc(`당신은 파에톤과 재회했습니다. 익숙한 뒷모습. 희미해져가던 그 향기를 맡습니다. 어떻게 그걸 잊을 수 있을까요? 당장 그 품에 뛰어 들고 싶은 마음을 참을 수 없습니다.\n\n"속지 마."\n\n비비안 밴시의 팔을 시드가 붙잡는다. 비비안 밴시는 환영으로부터 빠져나왔다.\n우연히 마주친 오볼로스 소대의 막내는 다소 수척해 보였다.`);
+        
+        addButton("감사를 표한다.", () => {
+            let gain = rand(12, 14);
+            state.resonium += gain;
+            appendLog(`시드는 로프꾼을 찾아내는 게 어느 쪽이 되든지, 독점은 금지라고 말한다.\n(레조니움 ${gain}개를 획득했습니다.)`);
+            updateUI(); finishEvent();
+        });
+        
+        addButton("안부를 묻는다.", () => {
+            let gain = rand(7, 17);
+            state.resonium += gain;
+            appendLog(`시드는 대답 없이 비비안 밴시의 어깨를 토닥거린다.\n(레조니움 ${gain}개를 획득했습니다.)`);
+            updateUI(); finishEvent();
+        });
+    }
+
+    // --- 신규 사건 7: 니콜 데마라 ---
+    function runEventNicole() {
+        setEventTitle("[사건 : 니콜 데마라(NICOLE DEMARA)]");
+        setEventDesc(`레테 공동의 공터에 니콜이 앉아 있다. 익숙한 듯이 데니를 튕기며.\n\n"왔어?"\n\n비비안 밴시는 주변을 돌아 본다. 하지만 주변에는 아무도 없다.\n동전 튕기는 소리가 들려온다.\n\n"나도 우리 로프꾼은 정말 보고 싶지만, 아무래도 나는 여기까지인 것 같네."\n\n비비안 밴시는 니콜 데마라의 상태를 살펴보지만, 눈에 띄는 부상을 입은 듯한 모습은 아니다.\n\n"난 멀쩡하거든? 근데, 여기서 더 가지는 못할 거 같아. 이만 나가려고."\n"이건 내 마음이야. 로프꾼을 만나면 대신 전해줘."`);
+        
+        addButton("동행을 권유한다.", () => {
+            let gain = rand(19, 54);
+            state.denny += gain;
+            appendLog(`니콜 데마라는 미안한 표정을 지으며 주머니와 가방 속 데니를 비비안 밴시에게 모두 주었다.\n(데니 ${gain}개를 획득했습니다.)`);
+            updateUI(); finishEvent();
+        });
+        
+        addButton("니콜 데마라의 마음을 건네 받는다.", () => {
+            let gain = rand(33, 41);
+            state.denny += gain;
+            appendLog(`니콜 데마라는 아련한 표정을 지으며 주머니 속 데니를 비비안 밴시에게 모두 주었다.\n(데니 ${gain}개를 획득했습니다.)`);
+            updateUI(); finishEvent();
+        });
+    }
+
 function runEventBank() {
         setEventTitle("[수상한 유물 은행]");
         setEventDesc(`인간의 감정을 저장할 수 있는 수상한 유물을 가진 Bangboo가 비비안 밴시에게 예금 이용을 권유한다.\n(현재 예금된 사랑: ${state.bankLove})`);
@@ -677,7 +745,7 @@ function runEventBank() {
         let enemy = { type: type, hp: 0, maxHp: 0, atk: 0, luck: 0, name: "" };
 
         if(type === 'normal') {
-            const names = ["에테리얼", "침식체", "레이더", "불량방부", "폭주한 스마트 구조체", "야성적인 시렌"];
+            const names = ["에테리얼", "침식체", "레이더", "불량-Bangboo", "폭주한 스마트 구조체", "야성적인 시렌"];
             enemy.name = names[rand(0, names.length-1)];
             enemy.hp = enemy.maxHp = rand(15, 30);
             enemy.atk = rand(7, 19);
@@ -733,7 +801,7 @@ function runEventBank() {
     function playerAttack() {
         clearButtons();
         let isCrit = roll(getCritChance());
-        let dmg = isCrit ? rand(150, 200) : getAtk();
+    let dmg = isCrit ? (getAtk() + rand(150, 210)) : getAtk();
         
         if(isCrit) appendLog(`\n<span style="color: #ffd700;">[파에톤의 노래] 난개가 발동했습니다! 적에게 ${dmg}의 피해!</span>`);
         else appendLog(`\n비비안의 공격! 적에게 ${dmg}의 피해.`);
