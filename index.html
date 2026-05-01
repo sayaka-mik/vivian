@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>공동 탐사 시뮬레이터\n(V2.0.14)</title>
+    <title>공동 탐사 시뮬레이터 V2</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap');
 
@@ -186,7 +186,7 @@
     
     <!-- Start Screen -->
     <div id="start-screen" class="screen active">
-        <h1>공동 탐사 시뮬레이터\n(V2.0.14)</h1>
+        <h1>공동 탐사 시뮬레이터 V2</h1>
         <button onclick="startGameIntro()">게임 시작</button>
     </div>
 
@@ -234,17 +234,10 @@
 
 <script>
     // --- 게임 상태 변수 ---
-    let state = {
-        floor: 1,
-        baseMaxHp: 1,
-        baseAtk: 1,
-        hp: 1,
-        love: 1,
-        denny: 1,
-        resonium: 1,
-        bankLove: 0,
-        eventState: 'IDLE', // IDLE, COMBAT
-        enemy: null
+ let state = {
+        floor: 1, baseMaxHp: 1, baseAtk: 1, hp: 1, love: 1, denny: 1, resonium: 1, bankLove: 0,
+        eventState: 'IDLE', enemy: null,
+        bonusRevive: 0
     };
 
     const maxLove = 1000;
@@ -252,7 +245,9 @@
     // 파생 스탯 계산기
     function getMaxHp() { return state.baseMaxHp + Math.floor(state.resonium / 2); }
     function getAtk() { return state.baseAtk + Math.floor(state.denny / 3); }
-    function getReviveChance() { return Math.min(100, Math.floor(state.love / 11)); }
+    function getReviveChance() { 
+        return Math.min(100, Math.floor(state.love / 11) + state.bonusRevive); 
+    }
     function getStrongEnemyChance() { return Math.min(100, Math.floor(state.love / 12)); }
     function getCritChance() { return Math.min(100, Math.floor(state.love / 16)); }
 
@@ -289,8 +284,16 @@
         document.getElementById('ui-denny').innerText = state.denny;
         document.getElementById('ui-resonium').innerText = state.resonium;
 
+let baseRevive = Math.floor(state.love / 11);
+
         let effects = [];
-        effects.push(`[저를 비비안이라 불러주세요] 확률이 ${getReviveChance()}% 상승했습니다.`);
+        effects.push(`[저를 비비안이라 불러주세요] 사랑 수치에 의한 불굴 확률이 ${baseRevive}% 상승했습니다.`);
+        
+        // 추가 부활 버프가 0보다 클 때만 한 줄을 추가
+        if(state.bonusRevive > 0) {
+            effects.push(`[파에톤의 노래] 부활 확률이 추가로 ${state.bonusRevive}% 상승했습니다.`);
+        }
+        
         effects.push(`[갈대 숲의 바람]이 불어올 확률이 ${getStrongEnemyChance()}% 상승했습니다.`);
         effects.push(`[파에톤의 노래] 비비안 밴시의 난개 발동 확률이 ${getCritChance()}% 상승했습니다.`);
         document.getElementById('ui-effects').innerText = effects.join('\n');
@@ -312,7 +315,7 @@
 
 파에톤이 정말 그곳에 있는지, 없는지. 중요치 않다. 중요한 건 비비안 밴시는 그곳으로 갈 수밖에 없다는 것이었다.
 
-지나가는 길거리에서는 '레테 공동의 50층에 도착하면 시간을 되돌릴 수 있다'는 헛소문에 대해 떠드는 사람들의 목소리가 들려온다. 비비안 밴시의 두 눈에서 눈물이 흘러 내린다.
+지나가는 길거리에서는 '레테 공동의 20층에 도착하면 시간을 되돌릴 수 있다'는 헛소문에 대해 떠드는 사람들의 목소리가 들려온다. 비비안 밴시의 두 눈에서 눈물이 흘러 내린다.
 
 그녀는 레테 공동으로 뛰어들었다.
 부디 그녀에게, 행운의 여신이 깃들기를.`;
@@ -436,8 +439,8 @@ function processFloor() {
             let atkBonus = Math.floor(state.denny / 3);
             let hpBonus = Math.floor(state.resonium / 2);
 
-            // 현재 확률 계산
-            let reviveProb = getReviveChance();
+            // 사랑 수치에 의한 확률만 별도 분리
+            let baseRevive = Math.floor(state.love / 11);
             let strongProb = getStrongEnemyChance();
             let critProb = getCritChance();
 
@@ -447,7 +450,8 @@ function processFloor() {
             let descHtml = `<span style="color: #ffb6c1;">[소네트] 비비안 밴시가 파에톤의 기억을 떠올립니다. 이번 층에서 사랑이 ${loveGain} 상승하였습니다.</span>\n`;
             descHtml += `<span style="color: #daa520;">[동전마법] 레테 공동의 에테르 장막이 보유한 데니를 ${atkBonus}의 공격력으로 변환했습니다.</span>\n`;
             descHtml += `<span style="color: #cccccc;">[폐품장갑] 비비안 밴시가 수집한 레조니움이 최대HP에 ${hpBonus}의 보정을 제공합니다.</span>\n`;
-            descHtml += `<span style="color: #add8e6;">[저를 비비안이라 불러주세요] 부활 확률이 ${reviveProb}% 상승했습니다.</span>\n`;
+            descHtml += `<span style="color: #add8e6;">[저를 비비안이라 불러주세요] 부활 확률이 ${baseRevive}% 상승했습니다.</span>\n`;
+            descHtml += `<span style="color: #add8e6;">[파에톤의 노래(DISC)] 부활 확률이 추가로 ${state.bonusRevive}% 상승했습니다.</span>\n`;
             descHtml += `<span style="color: #cd853f;">[갈대 숲의 바람] 강적 조우 확률이 ${strongProb}% 상승했습니다.</span>\n`;
             descHtml += `<span style="color: #ffd700;">[파에톤의 노래] 치명타 발동 확률이 ${critProb}% 상승했습니다.</span>\n\n`;
             descHtml += `레테 공동 ${state.floor}층을 탐사합니다.`;
@@ -488,31 +492,23 @@ function processFloor() {
 
 function rollRandomEvent() {
         clearButtons();
-
-        // [신규 기믹] 초반(4층 이하) 보호 구역 설정
         let isEarlyFloor = state.floor <= 4;
 
-        // 우선 처리 : 특수 강적 (3%) - 4층 이하에서는 절대 등장하지 않음
-        if(!isEarlyFloor && roll(3)) {
-            startCombat('special');
-            return;
-        }
-        
-        // 우선 처리 : 사랑 수치 강적 - 4층 이하에서는 절대 등장하지 않음
+        if(!isEarlyFloor && roll(3)) { startCombat('special'); return; }
         if(!isEarlyFloor && roll(getStrongEnemyChance())) {
             appendLog(`<span style="color: #cd853f;">"[갈대 숲의 바람]이 발동하여 이번 층에서 강적을 조우합니다!"</span>`);
-            startCombat('strong');
-            return;
+            startCombat('strong'); return;
         }
 
-        // 일반 이벤트 롤
         let r = rand(1, 100);
-        if(r <= 40) { // 전투 40%
-            // 4층 이하에서는 무조건 일반 전투만, 5층부터 강적 20% 포함
+        if(r <= 40) { 
             if(!isEarlyFloor && roll(20)) startCombat('strong');
             else startCombat('normal');
         } else if(r <= 80) { // 사건 40%
-            runEventBangboo();
+            // [수정된 부분] 5가지 사건 중 하나를 랜덤으로 실행
+            const events = [runEventBangboo, runEventSisia, runEventWhiteStar, runEventSong, runEventRaider];
+            let chosenEvent = events[rand(0, events.length - 1)];
+            chosenEvent();
         } else { // 은행 20%
             runEventBank();
         }
@@ -533,9 +529,104 @@ function rollRandomEvent() {
         addButton("쓰다듬어준다", () => {
             let gain = rand(8, 17);
             state.resonium += gain;
-            appendLog(`Bangboo는 더 엇갈리지 않도록 여기서 얌전히 주인님을 기다리겠다고 말한다.\n(유물 ${gain}개 획득)`);
+            appendLog(`Bangboo는 더 엇갈리지 않도록 여기서 얌전히 주인님을 기다리겠다고 말한다.\n(레조니움 ${gain}개 획득)`);
             updateUI();
             finishEvent();
+        });
+
+    }
+
+    // --- 신규 사건 1: 시시아 ---
+    function runEventSisia() {
+        setEventTitle("[사건 : 시시아와의 조우]");
+        setEventDesc(`레테 공동에서 시시아를 마주쳤다. 파에톤이 죽은 뒤 그녀도 떠돌이가 되었던가. 랜덤플레이 잔해 위에서 머물고 있다는 소식은 들었는데...\n\n시시아는 비비안에게 사랑의 기억을 사겠다고 제안한다. 그녀는 파에톤에 대한 추억이 잊혀지는 게 싫다고 호소했다.`);
+        
+        addButton("제안에 응한다.", () => {
+            let amount = Math.floor(state.love / 2);
+            state.love -= amount;
+            state.denny += amount;
+            appendLog(`보유한 사랑의 50%(${amount})를 데니로 1:1 비율로 교환했습니다.`);
+            updateUI(); finishEvent();
+        });
+        
+        addButton("제안에 응하지 않는다.", () => {
+            appendLog(`소중한 추억은 넘겨줄 수 없다.`);
+            updateUI(); finishEvent();
+        });
+    }
+
+    // --- 신규 사건 2: 화이트스타 학회 ---
+    function runEventWhiteStar() {
+        setEventTitle("[사건 : 화이트스타 학회의 조난]");
+        setEventDesc(`레테 공동을 조사하는 화이트스타 학회 사람들과 마주쳤다. 그들은 조사에 난항을 겪고 있다며 레조니움을 원한다고 말한다.`);
+        
+        addButton("그들에게 레조니움을 판매한다.", () => {
+            let amount = Math.floor(state.resonium / 2);
+            let dennyGain = Math.floor(amount * 1.5);
+            state.resonium -= amount;
+            state.denny += dennyGain;
+            appendLog(`보유한 레조니움의 50%(${amount}개)를 1.5배의 데니(${dennyGain}개)로 판매했습니다.`);
+            updateUI(); finishEvent();
+        });
+        
+        addButton("그들에게 레조니움을 판매하지 않는다.", () => {
+            let amount = state.resonium;
+            state.resonium = 0;
+            state.denny += (amount + 50);
+            appendLog(`화이트스타 학회의 절실함을 간과했다.\n보유한 레조니움의 100%(${amount}개)를 상실하고 동일한 수치의 데니와 추가 데니 50개를 획득했습니다.`);
+            updateUI(); finishEvent();
+        });
+    }
+
+    // --- 신규 사건 3: 파에톤의 노래 ---
+    function runEventSong() {
+        setEventTitle("[사건 : 파에톤의 노래]");
+        setEventDesc(`레테 공동의 틈새에서 디스크, '파에톤의 노래'를 발견했습니다. 비비안 밴시는 자신이 풋내 나던 시절 작성한 멜로디를 들으며 추억에 잠깁니다.`);
+        
+        addButton("노래를 조금 더 듣는다.", () => {
+            state.bonusRevive += 1;
+            appendLog(`비비안 밴시가 의지를 다잡습니다.\n부활 확률이 추가로 1% 상승했습니다.`);
+            updateUI(); finishEvent();
+        });
+        
+        addButton("추억을 묻어두고 나아간다.", () => {
+            state.bonusRevive += 2;
+            appendLog(`비비안 밴시는 과거에 얽매이는 대신 다시 만날 수 있다는 의지를 다잡았습니다.\n부활 확률이 추가로 2% 상승했습니다.`);
+            updateUI(); finishEvent();
+        });
+    }
+
+    // --- 신규 사건 4: 레이더 집단 ---
+    function runEventRaider() {
+        setEventTitle("[사건 : 레이더 집단]");
+        setEventDesc(`무장한 대규모 레이더 집단과 마주쳤습니다. 비비안 밴시는 필사적으로 도망쳤고, 궁지에 몰린 순간 반격에 나섰습니다.\n동료애가 부족한 레이더들은 아군이 죽어나가자 도망쳤습니다. 죽어가는 레이더 하나가 말합니다.\n\n"이 마녀...."\n\n그 말을 들은 비비안의 트라우마가 자극됩니다.`);
+        
+        addButton("눈을 감은 채 나아간다.", () => {
+            let hpDrop = Math.max(3, Math.floor(state.hp * 0.1));
+            state.hp -= hpDrop;
+            let loveLog = "";
+            
+            if(roll(50)) {
+                let loveDrop = Math.max(30, Math.floor(state.love * 0.2));
+                state.love -= loveDrop;
+                loveLog = `\n(추가로 사랑이 ${loveDrop} 감소했습니다.)`;
+            }
+            appendLog(`파에톤의 빛이 흐릿해지는 듯한 느낌이 듭니다.\n(HP가 ${hpDrop} 감소했습니다.)${loveLog}`);
+            updateUI(); finishEvent();
+        });
+        
+        addButton("귀를 막은 채 나아간다.", () => {
+            let hpDrop = Math.max(3, Math.floor(state.hp * 0.1));
+            state.hp -= hpDrop;
+            let loveLog = "";
+            
+            if(roll(50)) {
+                let loveDrop = Math.max(20, Math.floor(state.love * 0.1));
+                state.love -= loveDrop;
+                loveLog = `\n(추가로 사랑이 ${loveDrop} 감소했습니다.)`;
+            }
+            appendLog(`비난의 화살을 등지고 빛을 향해 나아간다.\n(HP가 ${hpDrop} 감소했습니다.)${loveLog}`);
+            updateUI(); finishEvent();
         });
     }
 
@@ -738,31 +829,60 @@ function checkPlayerDeath() {
         });
     }
 
-function winGame() {
+// --- 엔딩 텍스트 스킵을 위한 전역 변수 ---
+    let isEndingSkipped = false;
+
+    async function winGame() {
         setEventTitle("[공동 20층 도착]");
-        setEventDesc(`"마침내 비비안은 파에톤과 재회했다."\n\n모든 시련을 이겨내고 마침내 목적지에 도달했습니다.`);
-        clearButtons();
+        const textEl = document.getElementById('event-desc');
+        textEl.innerHTML = ''; // 기존 텍스트 지우기
+        clearButtons(); // 기존 버튼 모두 숨기기
         
-        // 클리어 후 재시작 버튼 추가
+        const endingTextRaw = `레테 공동의 20층, 텅 비어있는 것 같은 황야에 비비안 밴시는 발을 들였다.\n헛소문이었던걸까?\n아마 그럴 것이다. 공동에서는 어떤 신비로운 일들이라도 일어난다고 하지만, 죽은 사람이 되살아난다거나 시간을 돌리는 일 따위는...\n"비비안?"\n그리운 목소리에 비비안 밴시는 고개를 돌렸다.\n\n태양보다 찬란한 빛이 공동을 비추고, 마침내 비비안은 파에톤과 재회했다.\n\n모든 시련을 이겨내고 마침내 목적지에 도달했습니다.`;
+
+        isEndingSkipped = false; // 스킵 상태 초기화
+
+        // 화면(이벤트 섹션) 클릭 시 스킵 처리하는 이벤트 리스너
+        const eventSec = document.getElementById('event-section');
+        const skipHandler = () => {
+            isEndingSkipped = true;
+        };
+        eventSec.addEventListener('click', skipHandler);
+
+        // 타이핑 효과 루프
+        for (let i = 0; i < endingTextRaw.length; i++) {
+            // 스킵이 발동되면 전체 텍스트를 바로 출력하고 루프 종료
+            if (isEndingSkipped) {
+                textEl.innerHTML = endingTextRaw;
+                break;
+            }
+
+            textEl.innerHTML += endingTextRaw[i];
+            
+            // 마침표나 줄바꿈에서는 조금 더 길게 쉬어가는 딜레이
+            let delay = endingTextRaw[i] === '.' || endingTextRaw[i] === '?' || endingTextRaw[i] === '\n' ? 50 : 30;
+            await new Promise(r => setTimeout(r, delay));
+            
+            // 텍스트가 길어지면 자동으로 아래로 스크롤
+            if(i % 5 === 0) eventSec.scrollTop = eventSec.scrollHeight;
+        }
+
+        // 텍스트 출력이 끝났으므로 이벤트 리스너 제거
+        eventSec.removeEventListener('click', skipHandler);
+        eventSec.scrollTop = eventSec.scrollHeight; // 최종 스크롤 하단 고정
+        
+        // 텍스트 출력이 모두 끝난 뒤에 비로소 재시작 버튼 표시
         addButton("다시 한 번 탐사 시작하기", () => {
             resetGame();
         });
     }
 
 // --- 게임 초기화 로직 ---
-    function resetGame() {
-        // 스탯 및 진행 상황 초기화
+function resetGame() {
         state = {
-            floor: 1,
-            baseMaxHp: 1,
-            baseAtk: 1,
-            hp: 1,
-            love: 1,
-            denny: 1,
-            resonium: 1,
-            bankLove: 0,
-            eventState: 'IDLE',
-            enemy: null
+            floor: 1, baseMaxHp: 1, baseAtk: 1, hp: 1, love: 1, denny: 1, resonium: 1, bankLove: 0,
+            eventState: 'IDLE', enemy: null,
+            bonusRevive: 0
         };
         
         // 텍스트 로그 초기화
