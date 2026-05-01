@@ -240,7 +240,7 @@ body {
     
     <!-- Start Screen -->
     <div id="start-screen" class="screen active">
-        <h1>공동 탐사 시뮬레이터 V2-0.28</h1>
+        <h1>공동 탐사 시뮬레이터 V2-0.29</h1>
         <button onclick="startGameIntro()">게임 시작</button>
     </div>
 
@@ -877,7 +877,7 @@ function runEventBank() {
         state.hp -= dmg;
         
         let hitTexts = ["묵직한 고통이 느껴진다.", "이를 악물고 버틴다.", "파에톤 님, 어디 계신가요.", "희망을 잃어간다."];
-        appendLog(`\n적의 공격! ${hitTexts[rand(0,1)]} (${dmg} 피해)`);
+        appendLog(`\n적의 공격! ${hitTexts[rand(0, 3)]} (${dmg} 피해)`);
         
         updateUI();
 
