@@ -809,13 +809,13 @@ function checkPlayerDeath() {
             if(roll(50)) {
                 let d = rand(2, 18); state.denny += d; appendLog(`보상으로 데니 ${d}개 획득.`);
             } else {
-                let r = rand(1, 7); state.resonium += r; appendLog(`보상으로 유물 ${r}개 획득.`);
+                let r = rand(1, 7); state.resonium += r; appendLog(`보상으로 레조니움 ${r}개 획득.`);
             }
         } else { // 강적 및 특수강적 보상
             if(roll(50)) {
                 let d = rand(20, 50); state.denny += d; appendLog(`보상으로 데니 ${d}개 획득.`);
             } else {
-                let r = rand(10, 20); state.resonium += r; appendLog(`보상으로 유물 ${r}개 획득.`);
+                let r = rand(10, 20); state.resonium += r; appendLog(`보상으로 레조니움 ${r}개 획득.`);
             }
         }
         updateUI();
